@@ -1,0 +1,116 @@
+# StreamGuard local stack.
+#   docker compose up -d --build            # everything incl. the simulator
+#   docker compose --profile live up -d     # also stream real Binance trades
+name: streamguard
+
+x-app-env: &app-env
+  KAFKA_BOOTSTRAP: redpanda:9092
+  POSTGRES_DSN: postgresql://streamguard:streamguard@timescaledb:5432/streamguard
+  SG_ALERT_WEBHOOK_URL: ${SG_ALERT_WEBHOOK_URL:-}
+  SG_ALERT_COOLDOWN_S: ${SG_ALERT_COOLDOWN_S:-60}
+  SG_Z_THRESHOLD: ${SG_Z_THRESHOLD:-4.0}
+  SG_EWMA_ALPHA: ${SG_EWMA_ALPHA:-0.05}
+
+services:
+  redpanda:
+    image: redpandadata/redpanda:v24.2.7
+    command:
+      - redpanda
+      - start
+      - --smp=1
+      - --memory=512M
+      - --overprovisioned
+      - --node-id=0
+      - --check=false
+      - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr=internal://redpanda:9092,external://localhost:19092
+    ports:
+      - "19092:19092"
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -E 'Healthy:.+true' || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - redpanda-data:/var/lib/redpanda/data
+
+  timescaledb:
+    image: timescale/timescaledb:2.17.2-pg16
+    environment:
+      POSTGRES_USER: streamguard
+      POSTGRES_PASSWORD: streamguard
+      POSTGRES_DB: streamguard
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U streamguard -d streamguard"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  processor:
+    build: .
+    command: ["processor"]
+    environment:
+      <<: *app-env
+      SG_METRICS_PORT: "8000"
+    ports:
+      - "8000:8000"
+    depends_on:
+      redpanda: { condition: service_healthy }
+      timescaledb: { condition: service_healthy }
+    restart: unless-stopped
+    stop_grace_period: 20s
+
+  simulator:
+    build: .
+    command: ["simulate", "--rate", "50", "--sensors", "5"]
+    environment: *app-env
+    depends_on:
+      redpanda: { condition: service_healthy }
+    restart: unless-stopped
+    stop_grace_period: 20s
+
+  live-feed:
+    build: .
+    command: ["live", "--symbols", "BTCUSDT", "ETHUSDT"]
+    environment:
+      <<: *app-env
+      BINANCE_WS_BASE: ${BINANCE_WS_BASE:-wss://stream.binance.com:9443}
+    depends_on:
+      redpanda: { condition: service_healthy }
+    restart: unless-stopped
+    profiles: ["live"]
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      - processor
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/streamguard.json
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./docker/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      timescaledb: { condition: service_healthy }
+      prometheus: { condition: service_started }
+
+volumes:
+  redpanda-data:
+  pg-data:

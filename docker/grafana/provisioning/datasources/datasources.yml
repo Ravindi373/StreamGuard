@@ -1,0 +1,22 @@
+apiVersion: 1
+datasources:
+  - name: TimescaleDB
+    uid: postgres
+    type: grafana-postgresql-datasource
+    access: proxy
+    url: timescaledb:5432
+    user: streamguard
+    jsonData:
+      database: streamguard
+      sslmode: disable
+      postgresVersion: 1600
+      timescaledb: true
+    secureJsonData:
+      password: streamguard
+    isDefault: true
+
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090

@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "streamguard"
+version = "1.0.0"
+description = "Real-time streaming anomaly detection pipeline: Kafka/Redpanda -> Python processor -> TimescaleDB -> Grafana"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Ayodhya" }]
+dependencies = [
+    "pydantic>=2.5,<3",
+    "confluent-kafka>=2.3",
+    "psycopg[binary]>=3.1",
+    "prometheus-client>=0.19",
+]
+
+[project.optional-dependencies]
+live = ["websockets>=12"]
+dev = ["pytest>=8", "ruff>=0.5"]
+
+[project.scripts]
+streamguard = "streamguard.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra -m 'not integration'"
+markers = ["integration: needs the docker compose stack (RUN_INTEGRATION=1)"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
