@@ -1,5 +1,5 @@
 import json
-from datetime import timezone
+from datetime import UTC
 
 import pytest
 from pydantic import ValidationError
@@ -14,12 +14,12 @@ def test_parses_valid_event():
 
 def test_naive_timestamp_is_assumed_utc():
     ev = parse_event('{"event_id":"a:1","source":"s","ts":"2026-01-01T00:00:00","value":1}')
-    assert ev.ts.tzinfo == timezone.utc
+    assert ev.ts.tzinfo == UTC
 
 
 def test_offset_timestamp_converted_to_utc():
     ev = parse_event('{"event_id":"a:1","source":"s","ts":"2026-01-01T05:30:00+05:30","value":1}')
-    assert ev.ts.hour == 0 and ev.ts.tzinfo == timezone.utc
+    assert ev.ts.hour == 0 and ev.ts.tzinfo == UTC
 
 
 @pytest.mark.parametrize(

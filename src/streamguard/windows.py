@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from streamguard.schemas import WindowRow
 
@@ -35,7 +35,7 @@ class _Acc:
 
 
 def _dt(epoch: float) -> datetime:
-    return datetime.fromtimestamp(epoch, tz=timezone.utc)
+    return datetime.fromtimestamp(epoch, tz=UTC)
 
 
 class WindowAggregator:

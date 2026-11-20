@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import signal
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from streamguard.config import Settings
 from streamguard.simulator import SensorSimulator, SimConfig
@@ -29,7 +29,7 @@ def _sim_from_args(args) -> SensorSimulator:
 def dump_to_file(args) -> None:
     """Generate `--count` events on a simulated clock (no Kafka needed)."""
     sim = _sim_from_args(args)
-    t = datetime.now(timezone.utc) - timedelta(seconds=args.count / args.rate)
+    t = datetime.now(UTC) - timedelta(seconds=args.count / args.rate)
     step = timedelta(seconds=1.0 / args.rate)
     with open(args.output, "wb") as fh:
         for _ in range(args.count):

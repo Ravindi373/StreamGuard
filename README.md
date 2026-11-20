@@ -45,7 +45,7 @@ flowchart LR
 
 ## Quickstart
 
-Requirements: Docker Desktop (Compose v2). Python 3.10+ only if you want to run the CLI on your host.
+Requirements: Docker Desktop (Compose v2). Python 3.11+ (3.12 recommended) only if you want to run the CLI on your host.
 
 ```powershell
 # PowerShell (Windows)
@@ -217,10 +217,10 @@ then read *Events / s*, *p95 batch time* and *End-to-end lag* on the dashboard a
 pytest                                              # unit tests, no services needed
 docker compose up -d --build
 RUN_INTEGRATION=1 pytest -m integration -o addopts=""   # end-to-end + sink idempotency
-ruff check src tests && ruff format --check src tests
+ruff check src tests dashboard && ruff format --check src tests dashboard
 ```
 
-CI (`.github/workflows/ci.yml`) runs lint, unit tests on Python 3.10 and 3.12, a Docker build,
+CI (`.github/workflows/ci.yml`) runs lint, unit tests on Python 3.11 and 3.12, a Docker build,
 and the integration tests against the real stack.
 
 ## Known limitations

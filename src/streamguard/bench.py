@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from streamguard.pipeline import Pipeline
 from streamguard.schemas import parse_event
@@ -12,7 +12,7 @@ from streamguard.simulator import SensorSimulator, SimConfig
 
 def run(count: int = 200_000, sensors: int = 10, batch_size: int = 500) -> dict[str, float]:
     sim = SensorSimulator(SimConfig(sensors=sensors, seed=1))
-    t = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    t = datetime(2026, 1, 1, tzinfo=UTC)
     step = timedelta(milliseconds=5)
     payloads = []
     for _ in range(count):

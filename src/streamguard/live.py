@@ -13,7 +13,7 @@ import logging
 import math
 import os
 import signal
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from streamguard.config import Settings
 
@@ -37,7 +37,7 @@ def trade_to_message(
     body = {
         "event_id": f"{symbol}:{data['t']}",
         "source": symbol,
-        "ts": datetime.fromtimestamp(data["T"] / 1000, tz=timezone.utc).isoformat(),
+        "ts": datetime.fromtimestamp(data["T"] / 1000, tz=UTC).isoformat(),
         "value": value,
         "attrs": {"price": price, "qty": float(data["q"])},
     }

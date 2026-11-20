@@ -13,7 +13,7 @@ import json
 import os
 import time
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -33,7 +33,7 @@ def test_spike_flows_through_the_whole_pipeline():
     ensure_topics(s.kafka_bootstrap, {s.topic_raw: s.topic_partitions, s.topic_dlq: 1})
     source = f"it-{uuid.uuid4().hex[:8]}"
     producer = make_producer(s.kafka_bootstrap)
-    t0 = datetime.now(timezone.utc) - timedelta(seconds=120)
+    t0 = datetime.now(UTC) - timedelta(seconds=120)
 
     def send(i: int, value: float) -> str:
         eid = f"{source}:{i}"

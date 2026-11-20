@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from streamguard.detectors import EWMADetector, RollingZScoreDetector
 from streamguard.pipeline import Pipeline
@@ -27,7 +27,7 @@ def evaluate(
         ]
     )
 
-    t = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    t = datetime(2026, 1, 1, tzinfo=UTC)
     step = timedelta(seconds=1.0 / rate)
     labels: dict[str, str | None] = {}
     flagged: dict[str, set[str]] = {}

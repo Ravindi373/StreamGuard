@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 import signal
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from pydantic import ValidationError
 
@@ -109,7 +109,7 @@ def run(settings: Settings) -> None:
             metrics.BATCH_SIZE.observe(len(msgs))
             metrics.BATCH_SECONDS.observe(time.perf_counter() - started)
             if out.newest_event_ts is not None:
-                lag = (datetime.now(timezone.utc) - out.newest_event_ts).total_seconds()
+                lag = (datetime.now(UTC) - out.newest_event_ts).total_seconds()
                 metrics.LAG_SECONDS.set(max(lag, 0.0))
             for a in out.anomalies:
                 metrics.ANOMALIES.labels(a.detector).inc()

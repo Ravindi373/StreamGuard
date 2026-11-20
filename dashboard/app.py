@@ -8,7 +8,7 @@ Environment: POSTGRES_DSN, PROMETHEUS_URL (optional), GRAFANA_URL (optional, for
 from __future__ import annotations
 
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import altair as alt
 import pandas as pd
@@ -19,11 +19,6 @@ import streamlit as st
 GRAFANA_URL = os.environ.get("GRAFANA_URL", "http://localhost:3000").rstrip("/")
 
 st.set_page_config(page_title="StreamGuard", page_icon="🛡️", layout="wide")
-
-
-@st.cache_data(ttl=20, show_spinner=False)
-def _sources() -> list[str]:
-    return q.list_sources()
 
 
 # --------------------------------------------------------------------- sidebar
@@ -37,13 +32,12 @@ with st.sidebar:
         help="End the window at the newest stored event instead of 'now' (for replayed data).",
     )
     try:
-        all_sources = _sources()
+        all_sources = q.list_sources()
     except psycopg.Error as exc:
         st.error(f"Cannot reach the database:\n\n{exc}")
         st.stop()
     selected = st.multiselect("Sources", all_sources, default=all_sources)
-    if st.button("Refresh now"):
-        st.cache_data.clear()
+    st.button("Refresh now")  # any widget interaction re-runs the app, re-reading the sources
 
 range_s = q.RANGES[range_label]
 refresh_s = None if refresh_label == "Off" else refresh_label
@@ -109,9 +103,7 @@ def live() -> None:
         st.error(f"Database error: {exc}")
         return
 
-    freshness = (
-        None if k["newest"] is None else (datetime.now(timezone.utc) - k["newest"]).total_seconds()
-    )
+    freshness = None if k["newest"] is None else (datetime.now(UTC) - k["newest"]).total_seconds()
     c1, c2, c3, c4, c5 = st.columns(5)
     c1.metric("Events / s (last 60 s)", f"{k['events_per_s']:.1f}")
     c2.metric("Events in window", f"{k['events']:,}")

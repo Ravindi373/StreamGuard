@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import pytest
@@ -68,7 +68,7 @@ def test_prom_instant_parses_values(fake_prom):
 
 
 def test_prom_range_builds_long_dataframe(fake_prom):
-    now = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    now = datetime(2026, 1, 1, tzinfo=UTC)
     df = q.prom_range("x_query_range", now, now, 5, "status")
     assert list(df.columns) == ["time", "series", "value"]
     assert sorted(df["series"].unique()) == ["invalid", "late"]
@@ -77,6 +77,6 @@ def test_prom_range_builds_long_dataframe(fake_prom):
 
 def test_prometheus_unreachable_returns_none_and_empty(monkeypatch):
     monkeypatch.setattr(q, "PROMETHEUS_URL", "http://127.0.0.1:9")  # nothing listens here
-    now = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    now = datetime(2026, 1, 1, tzinfo=UTC)
     assert q.prom_instant("up") is None
     assert q.prom_range("up", now, now, 5, "x").empty

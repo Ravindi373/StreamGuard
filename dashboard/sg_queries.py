@@ -10,7 +10,7 @@ import os
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pandas as pd
 import psycopg
@@ -52,7 +52,7 @@ def window_end(anchor_to_newest: bool) -> datetime:
         newest = query_df("SELECT max(ts) AS newest FROM events")["newest"].iloc[0]
         if pd.notna(newest):
             return newest.to_pydatetime()
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def list_sources(hours: int = 6) -> list[str]:
@@ -198,5 +198,5 @@ def prom_range(expr: str, start: datetime, end: datetime, step_s: int, label: st
     for series in (data or {}).get("result", []):
         name = series.get("metric", {}).get(label, "value")
         for ts, val in series.get("values", []):
-            rows.append((datetime.fromtimestamp(float(ts), tz=timezone.utc), name, float(val)))
+            rows.append((datetime.fromtimestamp(float(ts), tz=UTC), name, float(val)))
     return pd.DataFrame(rows, columns=["time", "series", "value"])

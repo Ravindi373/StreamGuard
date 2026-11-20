@@ -14,7 +14,7 @@ import json
 import math
 import random
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 
 @dataclass
@@ -77,7 +77,7 @@ class SensorSimulator:
         self._last_ok: Message | None = None
 
     def next_message(self, now: datetime | None = None) -> Message:
-        now = now or datetime.now(timezone.utc)
+        now = now or datetime.now(UTC)
         rng, cfg = self._rng, self.cfg
 
         if cfg.malformed_prob and rng.random() < cfg.malformed_prob:

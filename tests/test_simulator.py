@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from pydantic import ValidationError
@@ -7,7 +7,7 @@ from pydantic import ValidationError
 from streamguard.schemas import parse_event
 from streamguard.simulator import SensorSimulator, SimConfig
 
-NOW = datetime(2026, 1, 1, tzinfo=timezone.utc)
+NOW = datetime(2026, 1, 1, tzinfo=UTC)
 
 
 def test_same_seed_gives_identical_streams():

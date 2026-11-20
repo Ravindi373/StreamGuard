@@ -1,11 +1,11 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from streamguard.alerts import AlertManager
 from streamguard.schemas import AnomalyRow
 
 
 def anomaly(source="s1"):
-    return AnomalyRow("id", source, datetime(2026, 1, 1, tzinfo=timezone.utc), 99.0, 7.5, "ewma")
+    return AnomalyRow("id", source, datetime(2026, 1, 1, tzinfo=UTC), 99.0, 7.5, "ewma")
 
 
 def test_cooldown_per_source():
