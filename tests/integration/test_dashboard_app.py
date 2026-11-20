@@ -41,6 +41,12 @@ def _seed(dsn: str) -> None:
     sink.close()
 
 
+@pytest.fixture(autouse=True)
+def _database_mode(monkeypatch):
+    # Without POSTGRES_DSN the app would fall back to its in-process demo; these tests want the DB.
+    monkeypatch.setenv("STREAMGUARD_DEMO", "0")
+
+
 def _app():
     pytest.importorskip("streamlit")
     from streamlit.testing.v1 import AppTest

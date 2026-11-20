@@ -2,7 +2,12 @@
 
     streamlit run dashboard/app.py
 
-Environment: POSTGRES_DSN, PROMETHEUS_URL (optional), GRAFANA_URL (optional, for the embed tab).
+Two modes, chosen automatically:
+
+* database mode: reads TimescaleDB (+ Prometheus) written by the real Kafka pipeline.
+  Environment: POSTGRES_DSN, PROMETHEUS_URL (optional), GRAFANA_URL (optional, for the embed tab).
+* demo mode: no services needed; a simulated stream is generated and processed inside this app
+  (same pipeline code). Used when POSTGRES_DSN is not set. Force with STREAMGUARD_DEMO=1 (or 0).
 """
 
 from __future__ import annotations
@@ -12,11 +17,19 @@ from datetime import UTC, datetime, timedelta
 
 import altair as alt
 import pandas as pd
-import psycopg
-import sg_queries as q
 import streamlit as st
 
-GRAFANA_URL = os.environ.get("GRAFANA_URL", "http://localhost:3000").rstrip("/")
+_FORCE = os.environ.get("STREAMGUARD_DEMO", "").strip().lower()
+DEMO = _FORCE in {"1", "true", "yes"} or (
+    _FORCE not in {"0", "false", "no"} and "POSTGRES_DSN" not in os.environ
+)
+if DEMO:
+    import demo_backend as q
+else:
+    import sg_queries as q
+
+REPO_URL = os.environ.get("REPO_URL", "https://github.com/Ravindi373/StreamGuard")
+GRAFANA_URL = "" if DEMO else os.environ.get("GRAFANA_URL", "http://localhost:3000").rstrip("/")
 
 st.set_page_config(page_title="StreamGuard", page_icon="🛡️", layout="wide")
 
@@ -25,15 +38,29 @@ st.set_page_config(page_title="StreamGuard", page_icon="🛡️", layout="wide")
 with st.sidebar:
     st.title("🛡️ StreamGuard")
     st.caption("Real-time anomaly detection")
+    if DEMO:
+        st.info(
+            "**Live demo.** A simulated sensor stream is generated inside this app and "
+            "processed by the same pipeline code (de-duplication, watermarks, windows, "
+            "detectors) as the full Kafka version, including late, duplicate and malformed events."
+        )
+        st.link_button("Source code on GitHub", REPO_URL, width="stretch")
     range_label = st.selectbox("Time range", list(q.RANGES), index=1)
     refresh_label = st.selectbox("Auto-refresh", ["Off", "2s", "5s", "10s", "30s"], index=2)
-    anchor = st.checkbox(
-        "Anchor to newest event",
-        help="End the window at the newest stored event instead of 'now' (for replayed data).",
+    anchor = (
+        False
+        if DEMO
+        else st.checkbox(
+            "Anchor to newest event",
+            help="End the window at the newest stored event instead of 'now' (for replayed data).",
+        )
     )
     try:
+        if DEMO:
+            with st.spinner("Warming up the demo stream..."):
+                q.ensure_started()
         all_sources = q.list_sources()
-    except psycopg.Error as exc:
+    except q.DB_ERRORS as exc:
         st.error(f"Cannot reach the database:\n\n{exc}")
         st.stop()
     selected = st.multiselect("Sources", all_sources, default=all_sources)
@@ -99,7 +126,7 @@ def live() -> None:
         by_source = q.anomalies_by_source(start, end, selected)
         recent = q.recent_anomalies(selected)
         windows = q.latest_windows()
-    except psycopg.Error as exc:
+    except q.DB_ERRORS as exc:
         st.error(f"Database error: {exc}")
         return
 
@@ -180,32 +207,58 @@ def live() -> None:
                 )
 
     with t_health:
-        st.subheader("Processor (from Prometheus)")
-        m1, m2, m3, m4 = st.columns(4)
-        _prom_metric(
-            m1, "Events / s (ok)", 'sum(rate(streamguard_events_total{status="ok"}[1m]))', "{:.1f}"
-        )
-        _prom_metric(
-            m2,
-            "p95 batch time",
-            "histogram_quantile(0.95, sum(rate(streamguard_batch_seconds_bucket[1m])) by (le))",
-            "{:.3f} s",
-        )
-        _prom_metric(m3, "End-to-end lag", "streamguard_end_to_end_lag_seconds", "{:.1f} s")
-        _prom_metric(m4, "Alerts fired (total)", "sum(streamguard_alerts_total)", "{:.0f}")
-
-        rejects = q.prom_range(
-            'sum by (status) (rate(streamguard_events_total{status!="ok"}[1m]))',
-            start,
-            end,
-            bucket,
-            "status",
-        )
-        if rejects.empty:
+        if DEMO:
+            h = q.health()
+            st.subheader("Pipeline (in-process)")
+            m1, m2, m3, m4 = st.columns(4)
+            m1.metric("Events / s (ok)", f"{h['events_per_s']:.1f}")
+            m2.metric(
+                "p95 batch time",
+                "n/a" if h["p95_batch_ms"] is None else f"{h['p95_batch_ms']:.1f} ms",
+            )
+            m3.metric(
+                "Newest event age",
+                "n/a" if h["event_age_s"] is None else f"{h['event_age_s']:.1f} s",
+            )
+            m4.metric("Uptime", f"{h['uptime_s'] / 60:.0f} min")
+            c = h["counts"]
             st.caption(
+                f"Since start: {c['ok']:,} accepted · {c['late']:,} late · "
+                f"{c['duplicate']:,} duplicates dropped · {c['invalid']:,} malformed rejected"
+            )
+            rejects = q.reject_rates(start, end, bucket)
+            no_data_msg = "Collecting data..."
+        else:
+            st.subheader("Processor (from Prometheus)")
+            m1, m2, m3, m4 = st.columns(4)
+            _prom_metric(
+                m1,
+                "Events / s (ok)",
+                'sum(rate(streamguard_events_total{status="ok"}[1m]))',
+                "{:.1f}",
+            )
+            _prom_metric(
+                m2,
+                "p95 batch time",
+                "histogram_quantile(0.95, sum(rate(streamguard_batch_seconds_bucket[1m])) by (le))",
+                "{:.3f} s",
+            )
+            _prom_metric(m3, "End-to-end lag", "streamguard_end_to_end_lag_seconds", "{:.1f} s")
+            _prom_metric(m4, "Alerts fired (total)", "sum(streamguard_alerts_total)", "{:.0f}")
+            rejects = q.prom_range(
+                'sum by (status) (rate(streamguard_events_total{status!="ok"}[1m]))',
+                start,
+                end,
+                bucket,
+                "status",
+            )
+            no_data_msg = (
                 f"No Prometheus data (is it running at `{q.PROMETHEUS_URL}`?). "
                 "Everything outside this tab comes straight from the database."
             )
+
+        if rejects.empty:
+            st.caption(no_data_msg)
         else:
             st.markdown("**Late / duplicate / invalid events per second**")
             chart = (

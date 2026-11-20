@@ -79,6 +79,7 @@ services:
       context: .
       dockerfile: dashboard/Dockerfile
     environment:
+      STREAMGUARD_DEMO: "0"
       POSTGRES_DSN: postgresql://streamguard:streamguard@timescaledb:5432/streamguard
       PROMETHEUS_URL: http://prometheus:9090
       # Opened by your *browser* (iframe tab), so this must be reachable from the host:
@@ -87,6 +88,26 @@ services:
       - "8501:8501"
     depends_on:
       timescaledb: { condition: service_healthy }
+    restart: unless-stopped
+
+  # Custom links, e.g. http://streamguard.localhost and http://grafana.localhost, or your own domain.
+  # Configure with STREAMGUARD_ADDR / GRAFANA_ADDR in .env (see .env.example). Ports 8501 and 3000
+  # keep working as before.
+  proxy:
+    image: caddy:2.8-alpine
+    environment:
+      STREAMGUARD_ADDR: ${STREAMGUARD_ADDR:-http://streamguard.localhost}
+      GRAFANA_ADDR: ${GRAFANA_ADDR:-http://grafana.localhost}
+    ports:
+      - "${PROXY_HTTP_PORT:-80}:80"
+      - "${PROXY_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - dashboard
+      - grafana
     restart: unless-stopped
 
   live-feed:
@@ -117,6 +138,7 @@ services:
       GF_AUTH_ANONYMOUS_ENABLED: "true"
       GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
       GF_SECURITY_ALLOW_EMBEDDING: "true"
+      GF_SERVER_ROOT_URL: ${GRAFANA_URL:-http://localhost:3000}
       GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/streamguard.json
     ports:
       - "3000:3000"
@@ -130,3 +152,5 @@ services:
 volumes:
   redpanda-data:
   pg-data:
+  caddy-data:
+  caddy-config:

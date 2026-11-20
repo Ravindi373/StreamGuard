@@ -14,6 +14,7 @@ from datetime import UTC, datetime
 
 import pandas as pd
 import psycopg
+from sg_common import bucket_seconds  # noqa: F401  (re-exported for the app)
 
 DSN = os.environ.get(
     "POSTGRES_DSN", "postgresql://streamguard:streamguard@localhost:5432/streamguard"
@@ -27,15 +28,9 @@ RANGES = {
     "Last 6 hours": 21_600,
 }
 
+DB_ERRORS = (psycopg.Error,)
+
 _BIN_ORIGIN = "TIMESTAMPTZ '2026-01-01 00:00:00+00'"
-
-
-def bucket_seconds(range_s: int, max_points: int = 240) -> int:
-    """Smallest 'nice' bucket that keeps a chart under `max_points` points."""
-    for b in (1, 2, 5, 10, 15, 30, 60, 120, 300, 600):
-        if range_s / b <= max_points:
-            return b
-    return 600
 
 
 def query_df(sql: str, params: tuple | list = ()) -> pd.DataFrame:

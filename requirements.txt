@@ -1,0 +1,6 @@
+# Dependencies for the hosted live demo (Streamlit Community Cloud reads this file).
+# The same list lives in dashboard/requirements.txt, used by the Docker image.
+streamlit>=1.67,<2
+psycopg[binary]>=3.1
+pandas>=2.0
+pydantic>=2.5,<3

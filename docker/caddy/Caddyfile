@@ -1,0 +1,18 @@
+# Custom links for the StreamGuard stack. Set these in .env (see .env.example):
+#   STREAMGUARD_ADDR   Streamlit dashboard   default http://streamguard.localhost
+#   GRAFANA_ADDR       Grafana               default http://grafana.localhost
+#
+# With an explicit http:// scheme Caddy serves plain HTTP (right for *.localhost).
+# With a bare public domain (e.g. streamguard.example.com) Caddy obtains a free HTTPS
+# certificate automatically; ports 80 and 443 must then be reachable from the internet.
+{
+	admin off
+}
+
+{$STREAMGUARD_ADDR:http://streamguard.localhost} {
+	reverse_proxy dashboard:8501
+}
+
+{$GRAFANA_ADDR:http://grafana.localhost} {
+	reverse_proxy grafana:3000
+}

@@ -58,8 +58,8 @@ docker compose up -d --build
 
 | What | URL |
 | --- | --- |
-| **Streamlit dashboard** (native charts + embedded Grafana tab) | http://localhost:8501 |
-| Grafana dashboard (login `admin` / `admin`, anonymous viewing enabled) | http://localhost:3000 |
+| **Streamlit dashboard** (native charts + embedded Grafana tab) | http://streamguard.localhost (or http://localhost:8501) |
+| Grafana dashboard (login `admin` / `admin`, anonymous viewing enabled) | http://grafana.localhost (or http://localhost:3000) |
 | Prometheus | http://localhost:9090 |
 | Processor metrics | http://localhost:8000/metrics |
 | Kafka API (from your host) | `localhost:19092` |
@@ -104,6 +104,15 @@ Deploying publicly: Streamlit Community Cloud cannot reach a database on your la
 hosted Postgres/TimescaleDB (Timescale Cloud, Neon, Supabase, ...) and run the processor against it; the dashboard
 then works anywhere. Omit `PROMETHEUS_URL` / `GRAFANA_URL` if those aren't exposed, and the app hides those panels
 gracefully.
+
+### Live demo and custom links
+
+- **Public demo, always on:** the dashboard has a self-contained *demo mode* (no Kafka or database) that
+  deploys to Streamlit Community Cloud with a custom address such as `https://streamguard.streamlit.app`.
+- **Custom hostnames for the full stack:** a built-in Caddy proxy serves `streamguard.localhost` and
+  `grafana.localhost`, or your own domain with automatic HTTPS.
+
+Step-by-step instructions are in [`docs/DEPLOY.md`](docs/DEPLOY.md).
 
 ### Running the CLI on your host
 
@@ -246,9 +255,12 @@ src/streamguard/
   simulator.py    seeded, fault-labelled data generator
   live.py         Binance websocket -> Kafka
   evaluate.py     precision/recall harness   bench.py   throughput harness
-dashboard/        Streamlit app (app.py) + data layer (sg_queries.py) + Dockerfile
+dashboard/        Streamlit app (app.py), DB backend (sg_queries.py), in-process demo backend
+                  (demo_backend.py), Dockerfile
+docker/caddy/     reverse-proxy config for custom links
 docker/           Postgres schema, Prometheus, Grafana provisioning + dashboard
 scripts/          failure-injection demo (PowerShell + bash)
 tests/            unit tests;  tests/integration/ needs the compose stack
 docs/DESIGN.md    design decisions and trade-offs
+docs/DEPLOY.md    public demo, custom links, tunnels
 ```
