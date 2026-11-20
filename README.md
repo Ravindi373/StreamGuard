@@ -58,7 +58,7 @@ docker compose up -d --build
 
 | What | URL |
 | --- | --- |
-| **Streamlit dashboard** (native charts + embedded Grafana tab) | http://streamguard.localhost (or http://localhost:8501) |
+| **Streamlit dashboard** (native charts + embedded Grafana tab) | https://streamguard-live.streamlit.app (or http://localhost:8501) |
 | Grafana dashboard (login `admin` / `admin`, anonymous viewing enabled) | http://grafana.localhost (or http://localhost:3000) |
 | Prometheus | http://localhost:9090 |
 | Processor metrics | http://localhost:8000/metrics |
