@@ -74,6 +74,21 @@ services:
     restart: unless-stopped
     stop_grace_period: 20s
 
+  dashboard:
+    build:
+      context: .
+      dockerfile: dashboard/Dockerfile
+    environment:
+      POSTGRES_DSN: postgresql://streamguard:streamguard@timescaledb:5432/streamguard
+      PROMETHEUS_URL: http://prometheus:9090
+      # Opened by your *browser* (iframe tab), so this must be reachable from the host:
+      GRAFANA_URL: ${GRAFANA_URL:-http://localhost:3000}
+    ports:
+      - "8501:8501"
+    depends_on:
+      timescaledb: { condition: service_healthy }
+    restart: unless-stopped
+
   live-feed:
     build: .
     command: ["live", "--symbols", "BTCUSDT", "ETHUSDT"]
@@ -101,6 +116,7 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: admin
       GF_AUTH_ANONYMOUS_ENABLED: "true"
       GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_SECURITY_ALLOW_EMBEDDING: "true"
       GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/streamguard.json
     ports:
       - "3000:3000"

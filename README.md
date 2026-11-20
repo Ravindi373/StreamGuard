@@ -58,6 +58,7 @@ docker compose up -d --build
 
 | What | URL |
 | --- | --- |
+| **Streamlit dashboard** (native charts + embedded Grafana tab) | http://localhost:8501 |
 | Grafana dashboard (login `admin` / `admin`, anonymous viewing enabled) | http://localhost:3000 |
 | Prometheus | http://localhost:9090 |
 | Processor metrics | http://localhost:8000/metrics |
@@ -82,6 +83,27 @@ docker compose exec timescaledb psql -U streamguard -c "SELECT * FROM events_10s
 ```
 
 Stop everything: `docker compose down` (add `-v` to wipe data).
+
+### Streamlit dashboard
+
+`docker compose up -d --build` also starts a Streamlit app at **http://localhost:8501** that reads the same
+TimescaleDB (and Prometheus for pipeline health). It offers a time-range picker, auto-refresh, per-source filters,
+sensor values with anomalies overlaid, anomaly breakdowns, processor health, and a **Grafana** tab that embeds
+the Grafana dashboard.
+
+Run it on your host instead (hot-reload while you edit):
+
+```powershell
+pip install -e ".[dashboard]"
+$env:POSTGRES_DSN="postgresql://streamguard:streamguard@localhost:5432/streamguard"
+$env:PROMETHEUS_URL="http://localhost:9090"
+streamlit run dashboard/app.py
+```
+
+Deploying publicly: Streamlit Community Cloud cannot reach a database on your laptop. Point `POSTGRES_DSN` at a
+hosted Postgres/TimescaleDB (Timescale Cloud, Neon, Supabase, ...) and run the processor against it; the dashboard
+then works anywhere. Omit `PROMETHEUS_URL` / `GRAFANA_URL` if those aren't exposed, and the app hides those panels
+gracefully.
 
 ### Running the CLI on your host
 
@@ -192,7 +214,7 @@ then read *Events / s*, *p95 batch time* and *End-to-end lag* on the dashboard a
 ## Testing
 
 ```bash
-pytest                                              # 45 unit tests, no services needed
+pytest                                              # unit tests, no services needed
 docker compose up -d --build
 RUN_INTEGRATION=1 pytest -m integration -o addopts=""   # end-to-end + sink idempotency
 ruff check src tests && ruff format --check src tests
@@ -224,6 +246,7 @@ src/streamguard/
   simulator.py    seeded, fault-labelled data generator
   live.py         Binance websocket -> Kafka
   evaluate.py     precision/recall harness   bench.py   throughput harness
+dashboard/        Streamlit app (app.py) + data layer (sg_queries.py) + Dockerfile
 docker/           Postgres schema, Prometheus, Grafana provisioning + dashboard
 scripts/          failure-injection demo (PowerShell + bash)
 tests/            unit tests;  tests/integration/ needs the compose stack
